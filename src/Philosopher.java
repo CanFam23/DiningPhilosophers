@@ -1,131 +1,137 @@
 package src;
 
+/**
+ * Represents a philosopher in the Dining Philosophers problem.
+ * Each philosopher alternates between thinking and eating, acquiring
+ * chopsticks when needed. The philosopher's actions are managed by
+ * a controller that coordinates their turns.
+ */
 public class Philosopher implements Runnable {
-    private final int eatTime = 1; // Make static? or different for each philosopher?
 
-    private final int thinkTime = 1; // Make static? or different for each philosopher?
-
-    private boolean running = false;
-
-    private State state;
-
-    private int timesEaten = 0;
-
-    /** Could be useful for debugging */
-    private int philNum;
-
+    // Philosophers' properties
+    private final int philNum;
     private final Chopstick leftStick;
     private final Chopstick rightStick;
 
+    // Philosopher's state and actions
+    private volatile boolean running = false;
+    private int timesEaten = 0;
     private final Thread thread;
 
-    public Philosopher(int philNum, Chopstick leftStick, Chopstick rightStick) {
-        this.state = State.Thinking;
+    // Controller to manage turns
+    private final DiningTable table;
+
+    /**
+     * Constructs a philosopher with the given number, chopsticks, and controller.
+     *
+     * @param philNum the unique identifier for the philosopher.
+     * @param leftStick the chopstick to the left of the philosopher.
+     * @param rightStick the chopstick to the right of the philosopher.
+     * @param table the controller that coordinates turns.
+     */
+    public Philosopher(int philNum, Chopstick leftStick, Chopstick rightStick, DiningTable table) {
         this.philNum = philNum;
         this.leftStick = leftStick;
         this.rightStick = rightStick;
         this.thread = new Thread(this, "Philosopher " + philNum);
-    }
-
-    public void start(){
-        this.running = true;
-        this.thread.start();
+        this.table = table;
     }
 
     /**
-     * Runs this operation.
+     * Starts the philosopher's thread, allowing them to begin their actions.
+     */
+    public void start() {
+        running = true;
+        thread.start();
+    }
+
+    /**
+     * Stops the philosopher's thread, halting their actions.
+     */
+    public void stopRunning() {
+        running = false;
+        thread.interrupt();
+    }
+
+    /**
+     * Returns the total number of times the philosopher has eaten.
+     *
+     * @return the number of times the philosopher has eaten.
+     */
+    public int getTimesEaten() {
+        return timesEaten;
+    }
+
+    /**
+     * Returns the philosopher's unique number.
+     *
+     * @return the philosopher's number.
+     */
+    public int getPhilNum() {
+        return philNum;
+    }
+
+    /**
+     * The philosopher's main activity loop, alternating between thinking and eating.
+     * The philosopher waits for their turn, tries to acquire both chopsticks,
+     * eats, releases the chopsticks, and then thinks.
      */
     @Override
     public void run() {
-        /*
-        while(running)
-            wait to pick up first chopstick
-            if picked up
-                try to pick up second chopstick
-                got 2nd chopstick?
-                yes
-                    eat
-                    wait
-                no
-                  drop first chopstick
-                  wait to try again
-         */
-        this.state = State.Hungry;
-//        System.out.println("Philosopher " + philNum + " is running");
+        while (running) {
+            // Wait for the philosopher's turn to eat
+            table.waitForTurn(philNum);
 
-        while(running) {
-//            System.out.println("Philosopher " + philNum + " is waiting for left stick");
+            // Try to acquire both chopsticks
             synchronized (leftStick) {
-                leftStick.aquire();
-//                System.out.println("Philosopher " + philNum + " got left stick");
-//                System.out.println("Philosopher " + philNum + " is waiting for right stick");
-                if(rightStick.isInUse()){
-//                    System.out.println("Philosopher " + philNum + " stick NOT AVAILABLE");
-                    try{
-                        leftStick.wait(100);
-                    }catch(InterruptedException ignored){}
-                    continue;
-                }
                 synchronized (rightStick) {
-                    rightStick.aquire();
-//                    System.out.println(rightStick.isInUse());
+                    if (!leftStick.isInUse() && !rightStick.isInUse()) {
+                        // Acquire the chopsticks and proceed to eat
+                        leftStick.aquire();
+                        rightStick.aquire();
 
-//                    System.out.println("Philosopher " + philNum + " TIME TO EAT!!!");
+                        eat();
 
-                    try{
-                        rightStick.wait(100);
-                    }catch(InterruptedException ignored){}
+                        // Release the chopsticks after eating
+                        leftStick.release();
+                        rightStick.release();
 
-                    timesEaten++;
+                        // Notify the controller that the philosopher finished eating
+                        table.finishedEating(philNum);
 
-                    rightStick.release();
-                    rightStick.notifyAll();
+                        think();
+                    }
                 }
-
-                leftStick.release();
-                leftStick.notifyAll();
             }
         }
-
-//        while(running) {
-//            System.out.println("Philosopher " + philNum + " is running");
-//            synchronized (leftStick) {
-//                boolean acquiredLeftChopstick = leftStick.aquire();
-//                if(acquiredLeftChopstick) {
-//
-//                    synchronized (rightStick) {
-//                        boolean acquiredRightChopstick = rightStick.aquire();
-//                        if(acquiredRightChopstick) {
-//                            System.out.println("Philosopher " + philNum + " acquired "+rightStick.toString());
-//                            System.out.println("Philosopher " + philNum + " TIME TO EAT!!!");
-//                            rightStick.release();
-//                        }
-//                        rightStick.notify();
-//                    }
-//                    leftStick.release();
-//                }
-//                leftStick.notify();
-//            }
-//        }
     }
 
-    public void stop(){
-        running = false;
+    /**
+     * Simulates the philosopher eating. Increments the times eaten counter
+     * and prints a message.
+     */
+    private void eat() {
+        timesEaten++;
+        System.out.println("Philosopher " + philNum + " is eating. Total: " + timesEaten);
+        sleep(100);
     }
 
-    public void grabChopstick(){
-        return;
+    /**
+     * Simulates the philosopher thinking by printing a message and sleeping.
+     */
+    private void think() {
+        System.out.println("Philosopher " + philNum + " is thinking.");
+        sleep(100);
     }
 
-    public void eat(){
-        return;
-    }
-
-    public void think(){
-        return;
-    }
-
-    public int getTimesEaten(){
-        return timesEaten;
+    /**
+     * Causes the current thread to sleep for the given amount of time.
+     *
+     * @param millis the time to sleep in milliseconds.
+     */
+    private void sleep(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ignored) {}
     }
 }

@@ -1,55 +1,56 @@
 package src;
 
-import java.util.Comparator;
-import java.util.PriorityQueue;
-import java.util.Queue;
-
+/**
+ * Represents a chopstick in the Dining Philosophers problem.
+ * Each chopstick can be acquired or released by a philosopher,
+ * and tracks whether it is currently in use.
+ */
 public class Chopstick {
+    private boolean inUse;
+
     /**
-     * Some threads gets to eat more then others. TO solve this, implement this queue
-     * When a thread wants to acquire, check if they are at the front of the queue (Least times ate)
-     * If so, give them access
-     * If not, don't
-     * Keep track of who currently has access
+     * Constructs a new chopstick that is not in use initially.
      */
-    private final Queue<Philosopher> threads;
-
-    /** Could be useful for debugging */
-    private int chopstickNum;
-
-    private volatile boolean inUse;
-
-    public Chopstick(int chopstickNum) {
-        this.chopstickNum = chopstickNum;
-        inUse = false;
-        threads = new PriorityQueue<>(Comparator.comparingInt(Philosopher::getTimesEaten));
+    public Chopstick() {
+        this.inUse = false;
     }
 
+    /**
+     * Attempts to acquire the chopstick.
+     * If the chopstick is not in use, it will be marked as in use and
+     * the method returns true. If the chopstick is already in use,
+     * the method returns false.
+     *
+     * @return true if the chopstick was successfully acquired, false otherwise.
+     */
     public synchronized boolean aquire() {
-        if(inUse){
-//            throw new IllegalStateException("Chopstick already in use");
+        if (inUse){
             return false;
         }
-
         inUse = true;
         return true;
     }
 
-    public synchronized boolean release(){
-        if(!inUse){
+    /**
+     * Releases the chopstick, marking it as no longer in use.
+     * If the chopstick is not currently in use, the method returns false.
+     *
+     * @return true if the chopstick was successfully released, false otherwise.
+     */
+    public synchronized boolean release() {
+        if (!inUse){
             return false;
         }
-
         inUse = false;
         return true;
     }
 
-    public boolean isInUse() {
+    /**
+     * Checks whether the chopstick is currently in use.
+     *
+     * @return true if the chopstick is in use, false otherwise.
+     */
+    public synchronized boolean isInUse() {
         return inUse;
-    }
-
-    @Override
-    public String toString() {
-        return "Chopstick " + chopstickNum;
     }
 }
