@@ -7,27 +7,40 @@ package src;
  * a controller that coordinates their turns.
  */
 public class Philosopher implements Runnable {
+    /** Amount of time the philosopher will eat for. */
+    private static final int EAT_TIME_MS = 100;
 
-    // Philosophers' properties
+    /** Amount of time the philosopher will think for. */
+    private static final int THINK_TIME_MS = 100;
+
+    /** Number of philosopher. */
     private final int philNum;
+
+    /** Philosophers left chopstick. */
     private final Chopstick leftStick;
+
+    /** Philosophers right chopstick. */
     private final Chopstick rightStick;
 
-    // Philosopher's state and actions
+    /** A flag indicating whether the thread should keep running. It is volatile to ensure visibility across threads. */
     private volatile boolean running = false;
+
+    /** Number of times philosopher has eaten. */
     private int timesEaten = 0;
+
+    /** The thread associated with this philosopher, which executes the {@link #run()} method. */
     private final Thread thread;
 
-    // Controller to manage turns
+    /** Controller to manage turns, each philosopher will only eat when the table says it can */
     private final DiningTable table;
 
     /**
      * Constructs a philosopher with the given number, chopsticks, and controller.
      *
-     * @param philNum the unique identifier for the philosopher.
-     * @param leftStick the chopstick to the left of the philosopher.
+     * @param philNum    the unique identifier for the philosopher.
+     * @param leftStick  the chopstick to the left of the philosopher.
      * @param rightStick the chopstick to the right of the philosopher.
-     * @param table the controller that coordinates turns.
+     * @param table      the controller that coordinates turns.
      */
     public Philosopher(int philNum, Chopstick leftStick, Chopstick rightStick, DiningTable table) {
         this.philNum = philNum;
@@ -50,7 +63,6 @@ public class Philosopher implements Runnable {
      */
     public void stopRunning() {
         running = false;
-        thread.interrupt();
     }
 
     /**
@@ -73,8 +85,7 @@ public class Philosopher implements Runnable {
 
     /**
      * The philosopher's main activity loop, alternating between thinking and eating.
-     * The philosopher waits for their turn, tries to acquire both chopsticks,
-     * eats, releases the chopsticks, and then thinks.
+     * The philosopher waits for their turn eats, and then thinks.
      */
     @Override
     public void run() {
@@ -85,22 +96,11 @@ public class Philosopher implements Runnable {
             // Try to acquire both chopsticks
             synchronized (leftStick) {
                 synchronized (rightStick) {
-                    if (!leftStick.isInUse() && !rightStick.isInUse()) {
-                        // Acquire the chopsticks and proceed to eat
-                        leftStick.aquire();
-                        rightStick.aquire();
+                    eat();
 
-                        eat();
+                    table.finishedEating(philNum);
 
-                        // Release the chopsticks after eating
-                        leftStick.release();
-                        rightStick.release();
-
-                        // Notify the controller that the philosopher finished eating
-                        table.finishedEating(philNum);
-
-                        think();
-                    }
+                    think();
                 }
             }
         }
@@ -112,16 +112,18 @@ public class Philosopher implements Runnable {
      */
     private void eat() {
         timesEaten++;
-        System.out.println("Philosopher " + philNum + " is eating. Total: " + timesEaten);
-        sleep(100);
+        // Uncomment the line below to see when each philosopher eats
+//        System.out.println("Philosopher " + philNum + " is eating. Total: " + timesEaten);
+        sleep(EAT_TIME_MS);
     }
 
     /**
      * Simulates the philosopher thinking by printing a message and sleeping.
      */
     private void think() {
-        System.out.println("Philosopher " + philNum + " is thinking.");
-        sleep(100);
+        // Uncomment the line below to see when each philosopher thinks
+//        System.out.println("Philosopher " + philNum + " is thinking.");
+        sleep(THINK_TIME_MS);
     }
 
     /**
@@ -132,6 +134,7 @@ public class Philosopher implements Runnable {
     private void sleep(int millis) {
         try {
             Thread.sleep(millis);
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
     }
 }

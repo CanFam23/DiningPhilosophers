@@ -1,6 +1,6 @@
 package src;
 
-import java.util.*;
+import java.util.List;
 
 /**
  * Simulates the Dining Philosophers problem where philosophers alternate between
@@ -8,8 +8,10 @@ import java.util.*;
  * to eat according to a predefined wave sequence.
  */
 public class DiningTable {
+    /** Amount of time the philosophers will eat for. */
+    private static final int DINING_TIME_MS = 5 * 1000;
 
-    // List of waves where each wave contains philosophers who will eat together
+    /** List of waves where each wave contains philosophers who will eat together. */
     private final List<List<Integer>> waves = List.of(
             List.of(1, 3),
             List.of(5, 2),
@@ -18,34 +20,40 @@ public class DiningTable {
             List.of(2, 4)
     );
 
-    private int currentWave = 0;           // Index of the current wave
-    private int completedThisWave = 0;     // Number of philosophers that have finished eating in the current wave
+    /** Size of waves. */
+    private final int waveSize = waves.getFirst().size();
+
+    /** Index of the current wave. */
+    private int currentWave = 0;
+
+    /** Number of philosophers that have finished eating in the current wave. */
+    private int completedThisWave = 0;
 
     /**
      * Main method to simulate the Dining Philosophers problem.
+     *
+     * @param args Arguments passed. Not used.
      */
     public static void main(String[] args) {
         final Philosopher[] philosophers = new Philosopher[5];
         final Chopstick[] chopsticks = new Chopstick[5];
-        DiningTable diningTable = new DiningTable();
+        final DiningTable diningTable = new DiningTable();
 
         // Initialize chopsticks
         for (int i = 0; i < 5; i++) {
             chopsticks[i] = new Chopstick();
         }
 
-        // Initialize philosophers with alternating chopstick pairs and controller
+        // Initialize philosophers
         for (int i = 0; i < 5; i++) {
             if (i < 4) {
-                if (i % 2 == 0) {
-                    philosophers[i] = new Philosopher(i + 1, chopsticks[i + 1], chopsticks[i], diningTable);
-                } else {
-                    philosophers[i] = new Philosopher(i + 1, chopsticks[i], chopsticks[i + 1], diningTable);
-                }
+                philosophers[i] = new Philosopher(i + 1, chopsticks[i], chopsticks[i + 1], diningTable);
             } else {
                 philosophers[i] = new Philosopher(i + 1, chopsticks[i], chopsticks[0], diningTable);
             }
         }
+
+        System.out.println("Allowing Philosophers to eat for " + (DINING_TIME_MS / 1000) + " seconds...");
 
         // Start philosophers' threads
         for (Philosopher p : philosophers) {
@@ -53,16 +61,15 @@ public class DiningTable {
         }
 
         try {
-            Thread.sleep(5000); // Run simulation for 5 seconds
+            Thread.sleep(DINING_TIME_MS); // Give philosophers time to eat
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
 
         // Stop philosophers and display the results
-        System.out.println("Time to stop\n");
         for (Philosopher p : philosophers) {
-            System.out.println("Philosopher: " + p.getPhilNum() + " ate " + p.getTimesEaten() + " times");
             p.stopRunning();
+            System.out.println("Philosopher: " + p.getPhilNum() + " ate " + p.getTimesEaten() + " times");
         }
         System.exit(0);
     }
@@ -78,7 +85,7 @@ public class DiningTable {
             try {
                 wait();
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                System.err.println("Error: " + Thread.currentThread().getName() + " was interrupted while waiting for it's turn to eat!");
             }
         }
     }
@@ -90,9 +97,15 @@ public class DiningTable {
      * @param philNum the philosopher's unique number.
      */
     public synchronized void finishedEating(int philNum) {
+        // Make sure the philosopher finished eating is in the current wave
+        if (!waves.get(currentWave).contains(philNum)) {
+            System.err.println("Error in finishedEating: Phil " + philNum + " is not in the current wave (" + (currentWave + 1) + "). Aborting program");
+            System.exit(1);
+        }
+
         completedThisWave++;
 
-        if (completedThisWave >= 2) {
+        if (completedThisWave >= waveSize) {
             completedThisWave = 0;
             currentWave = (currentWave + 1) % waves.size(); // Move to the next wave
             notifyAll();  // Let next wave proceed
